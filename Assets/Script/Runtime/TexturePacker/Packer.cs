@@ -104,9 +104,6 @@ namespace MsaI.TexturePacker
         
         static void ApplyPackings(Shader shader, TargetData[] targetDatas)
         {
-            var skinMeshRenderers = targetDatas.Select(x => x.skinnedMeshRenderer).ToArray();
-            var meshes = skinMeshRenderers.Select(x => x.sharedMesh).ToArray();
-            var subMeshDescriptors = targetDatas.Select(x => x.subMeshDescriptor).ToArray();
             var materials = targetDatas.Select(x => x.skinnedMeshRenderer.sharedMaterials[x.materialIndex]).ToArray();
             var textures = materials.Select(x => x.mainTexture as Texture2D).ToArray();
             var meshesDict = new Dictionary<Texture2D, TargetData[]>();
@@ -157,11 +154,9 @@ namespace MsaI.TexturePacker
             atlas.Apply();
             var material = new Material(shader);
             material.mainTexture = atlas;
-            var meshesArray = new List<Mesh>();
             for (int i = 0; i < rects.Length; i++)
             {
                 var targetDatas = meshesDict[readableTextures[i]];
-                var editedMeshes = new Mesh[targetDatas.Length];
                 for (int j = 0; j < targetDatas.Length; j++)
                 {
                     var mesh = targetDatas[j].skinnedMeshRenderer.sharedMesh;
@@ -178,7 +173,6 @@ namespace MsaI.TexturePacker
                         }
                     }
                     mesh.uv = uvs;
-                    editedMeshes[j] = mesh;
                     targetDatas[j].skinnedMeshRenderer.sharedMesh = mesh;
                     var currentMaterials = targetDatas[j].skinnedMeshRenderer.sharedMaterials;
                     currentMaterials[targetDatas[j].materialIndex] = material;
