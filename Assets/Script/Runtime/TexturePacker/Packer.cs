@@ -8,15 +8,19 @@ namespace MsaI.TexturePacker
 {
     public class Packer
     {
-        static Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]> targetsDict = new Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]>();
+        static Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]> targetsDict;
+        static Dictionary<Shader, TargetData[]> atlasTargetsDict;
 
         internal static void PackAssets(GameObject rootGameObject)
         {
-            targetsDict = new Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]>(); // Clear
+            //init
+            targetsDict = new Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]>();
+            atlasTargetsDict = new Dictionary<Shader, TargetData[]>();
+            
             var vrmObjects = GetChildren(rootGameObject);
             foreach (var vrmObject in vrmObjects)
             {
-                AddGameObjectToDict(vrmObject);
+                CreateTargetDict(vrmObject);
             }
             foreach (var target in targetsDict)
             {
@@ -24,8 +28,12 @@ namespace MsaI.TexturePacker
                 var targetDatas = target.Value;
                 FlattenMaterials(key.texture, key.shader, key.mainColor, targetDatas);
             }
-            var textures = targetsDict.Keys.Select(x => x.texture);
-            
+            foreach (var target in atlasTargetsDict)
+            {
+                var shader = target.Key;
+                var targetDatas = target.Value;
+                ApplyPackings(shader, targetDatas);
+            }
         }
 
         static GameObject[] GetChildren(GameObject gameObject)
@@ -40,7 +48,7 @@ namespace MsaI.TexturePacker
             return children.ToArray();
         }
         
-        static void AddGameObjectToDict(GameObject gameObject)
+        static void CreateTargetDict(GameObject gameObject)
         {
             var skinnedMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
             if (skinnedMeshRenderer != null)
@@ -51,6 +59,7 @@ namespace MsaI.TexturePacker
                 for (int i = 0; i < mesh.subMeshCount; i++)
                 {
                     var subMesh = mesh.GetSubMesh(i);
+                    //create dictionary for distinct texture, shader, color
                     var key = (materials[i].mainTexture, materials[i].shader, materials[i].color);
                     if (targetsDict.TryGetValue(key, out var targetDatas))
                     {
@@ -61,10 +70,21 @@ namespace MsaI.TexturePacker
                     {
                         targetsDict.Add(key, new []{new TargetData(skinnedMeshRenderer, subMesh, i)});
                     }
+                    //create dictionary for atlas
+                    var shader = materials[i].shader;
+                    if (atlasTargetsDict.TryGetValue(shader, out var atlasTargetDatas))
+                    {
+                        atlasTargetDatas = new List<TargetData>(atlasTargetDatas){new TargetData(skinnedMeshRenderer, subMesh, i)}.ToArray();
+                        atlasTargetsDict[shader] = atlasTargetDatas;
+                    }
+                    else
+                    {
+                        atlasTargetsDict.Add(shader, new []{new TargetData(skinnedMeshRenderer, subMesh, i)});
+                    }
                 }
             }
         }
-        
+
         static void FlattenMaterials(Texture texture, Shader shader, Color mainColor, TargetData[] targetDatas)
         {
             // Create texture with multiplied color
@@ -82,29 +102,27 @@ namespace MsaI.TexturePacker
             }
         }
         
-        static void ApplyPackings(Texture texture, Shader shader, Color mainColor, TargetData[] targetDatas)
+        static void ApplyPackings(Shader shader, TargetData[] targetDatas)
         {
-            // Create texture with multiplied color
-            var texture2D = texture as Texture2D;
-            var editedTexture = CreateMultipliedColorTexture(texture2D, mainColor);
-
             var skinMeshRenderers = targetDatas.Select(x => x.skinnedMeshRenderer).ToArray();
             var meshes = skinMeshRenderers.Select(x => x.sharedMesh).ToArray();
             var subMeshDescriptors = targetDatas.Select(x => x.subMeshDescriptor).ToArray();
-            
-            var result = PackTextures(editedTexture, meshes, subMeshDescriptors);
-            var material = new Material(shader);
-            material.mainTexture = result.Item1;
-            var editedMeshes = result.Item2;
-            
-            for (int i = 0; i < targetDatas.Length; i++)
+            var materials = targetDatas.Select(x => x.skinnedMeshRenderer.sharedMaterials[x.materialIndex]).ToArray();
+            var textures = materials.Select(x => x.mainTexture as Texture2D).ToArray();
+            var meshesDict = new Dictionary<Texture2D, TargetData[]>();
+            foreach (var targetData in targetDatas)
             {
-                var skinnedMeshRenderer = targetDatas[i].skinnedMeshRenderer;
-                var currentMaterials = skinnedMeshRenderer.sharedMaterials;
-                currentMaterials[targetDatas[i].materialIndex] = material;
-                skinnedMeshRenderer.sharedMaterials = currentMaterials;
-                skinnedMeshRenderer.sharedMesh = editedMeshes[i];
+                var texture = targetData.skinnedMeshRenderer.sharedMaterials[targetData.materialIndex].mainTexture as Texture2D;
+                if (meshesDict.TryGetValue(texture, out var array))
+                {
+                    meshesDict[texture] = new List<TargetData>(array){targetData}.ToArray();
+                }
+                else
+                {
+                    meshesDict.Add(texture, new []{targetData});
+                }
             }
+            PackAndApplyTextures(textures, shader, meshesDict);
         }
         
         static Texture2D CreateMultipliedColorTexture(Texture2D texture2D, Color color)
@@ -132,29 +150,41 @@ namespace MsaI.TexturePacker
             return editedTexture;
         }
         
-        static (Texture2D, Mesh[]) PackTextures(Texture2D[] readableTextures, Mesh[] meshes, SubMeshDescriptor[] subMeshDescriptors)
+        static void PackAndApplyTextures(Texture2D[] readableTextures, Shader shader, Dictionary<Texture2D, TargetData[]> meshesDict)
         {
-            Mesh[] editedMeshes = new Mesh[meshes.Length];
             var atlas = new Texture2D(1024, 1024);
             var rects = atlas.PackTextures(readableTextures, 0);
             atlas.Apply();
+            var material = new Material(shader);
+            material.mainTexture = atlas;
+            var meshesArray = new List<Mesh>();
             for (int i = 0; i < rects.Length; i++)
             {
-                var uvs = meshes[i].uv;
-                for (var j = 0; j < uvs.Length; j++)
+                var targetDatas = meshesDict[readableTextures[i]];
+                var editedMeshes = new Mesh[targetDatas.Length];
+                for (int j = 0; j < targetDatas.Length; j++)
                 {
-                    if (subMeshDescriptors[i].firstVertex <= j && j < subMeshDescriptors[i].firstVertex + subMeshDescriptors[i].vertexCount)
+                    var mesh = targetDatas[j].skinnedMeshRenderer.sharedMesh;
+                    var subMeshDescriptor = targetDatas[j].subMeshDescriptor;
+                    
+                    var uvs = mesh.uv;
+                    for (var k = 0; k < uvs.Length; k++)
                     {
-                        var uv = meshes[i].uv[j];
-                        var rect = rects[i];
-                        uvs[j] = new Vector2(rect.x + uv.x * rect.width, rect.y + uv.y * rect.height);
+                        if (subMeshDescriptor.firstVertex <= k && k < subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount)
+                        {
+                            var uv = mesh.uv[k];
+                            var rect = rects[i];
+                            uvs[k] = new Vector2(rect.x + uv.x * rect.width, rect.y + uv.y * rect.height);
+                        }
                     }
+                    mesh.uv = uvs;
+                    editedMeshes[j] = mesh;
+                    targetDatas[j].skinnedMeshRenderer.sharedMesh = mesh;
+                    var currentMaterials = targetDatas[j].skinnedMeshRenderer.sharedMaterials;
+                    currentMaterials[targetDatas[j].materialIndex] = material;
+                    targetDatas[j].skinnedMeshRenderer.sharedMaterials = currentMaterials;
                 }
-                var mesh = meshes[i];
-                mesh.uv = uvs;
-                editedMeshes[i] = mesh;
             }
-            return (atlas, editedMeshes);
         }
     }
 }
