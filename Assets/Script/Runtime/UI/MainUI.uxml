@@ -3,7 +3,7 @@
         <ui:VisualElement name="Left" style="flex-grow: 1; max-width: 25%; flex-direction: column-reverse;">
             <ui:Button text="Select VRM" parse-escape-sequences="true" display-tooltip-when-elided="true" name="SelectVRM" style="margin-right: 50px; margin-left: 50px; margin-bottom: 50px; margin-top: 50px; font-size: 16px; -unity-font-style: bold;" />
         </ui:VisualElement>
-        <ui:Label tabindex="-1" text="Result（Texture Atlas化後）" parse-escape-sequences="true" display-tooltip-when-elided="true" style="font-size: 22px;" />
+        <ui:Label tabindex="-1" text="Result (after texture packing)" parse-escape-sequences="true" display-tooltip-when-elided="true" style="font-size: 22px;" />
         <ui:VisualElement name="Right" style="flex-grow: 1; max-width: 25%; flex-direction: column-reverse;">
             <ui:Button text="Export VRM" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ExportVRM" style="margin-right: 50px; margin-left: 50px; margin-bottom: 50px; margin-top: 50px; font-size: 16px; -unity-font-style: bold;" />
         </ui:VisualElement>
