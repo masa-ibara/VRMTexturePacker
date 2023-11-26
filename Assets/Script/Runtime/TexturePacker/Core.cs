@@ -15,6 +15,10 @@ namespace MsaI.TexturePacker
                 Debug.LogWarning("Path is empty");
                 return;
             }
+            if (gltfInstance != null)
+            {
+                gltfInstance.Dispose();
+            }
             var instance = await VrmUtility.LoadAsync(path);
             gltfInstance = instance;
         }
