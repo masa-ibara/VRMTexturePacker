@@ -48,7 +48,7 @@ namespace MsaI.Runtime.UI
         {
             var loader = new WWW(url);
             yield return loader;
-            TexturePacker.Bridge.LoadVrm(loader.url);
+            TexturePacker.Bridge.LoadBytesVrm(url, loader.bytes);
             TexturePacker.Bridge.Pack();
         }
     }

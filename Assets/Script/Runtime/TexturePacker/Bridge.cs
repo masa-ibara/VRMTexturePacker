@@ -24,6 +24,17 @@ namespace MsaI.Runtime.TexturePacker
             gltfInstance = instance;
             gltfInstance.name = Path.GetFileNameWithoutExtension(path);
         }
+        
+        async internal static void LoadBytesVrm(string path, byte[] bytes)
+        {
+            if (gltfInstance != null)
+            {
+                gltfInstance.Dispose();
+            }
+            var instance = await VrmUtility.LoadBytesAsync(path, bytes);
+            gltfInstance = instance;
+            gltfInstance.name = Path.GetFileNameWithoutExtension(path);
+        }
 
         internal static void Pack()
         {
