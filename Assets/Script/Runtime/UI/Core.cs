@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace MsaI.Runtime.UI
 {
-    public class UI : MonoBehaviour
+    public class Core : MonoBehaviour
     {
         [SerializeField] UIDocument uiDocument;
         
@@ -20,49 +20,15 @@ namespace MsaI.Runtime.UI
             var exportVrm = root.Q<Button>("ExportVRM");
             exportVrm.clicked += ExportVrm;
         }
-        
-#if UNITY_WEBGL && !UNITY_EDITOR
-        //
-        // WebGL
-        //
-        [DllImport("__Internal")]
-        static extern void UploadFile(string gameObjectName, string methodName, string filter, bool multiple);
 
-        void LoadVrm() {
-            UploadFile("BtnLoadFile", "OnFileUpload", ".vrm", false);
-        }
-
-        // Called from browser
-        static void OnFileUpload(string url) {
-            TexturePacker.Bridge.LoadVrm(url);
-            TexturePacker.Bridge.Pack();
-        }
-        
-        [DllImport("__Internal")]
-        static extern void DownloadFile(string gameObjectName, string methodName, string filename, byte[] byteArray, int byteArraySize);
-
-        // Browser plugin should be called in OnPointerDown.
-        void ExportVrm() {
-            var result = TexturePacker.Bridge.Export();
-            DownloadFile("BtnSaveFile", "OnFileDownload", result.Item2, result.Item1, result.Item1.Length);
-        }
-
-        // Called from browser
-        static public void OnFileDownload() {
-        }
-#else
-        //
-        // Standalone platforms & editor
-        //
-        
-        void LoadVrm()
+        internal static void LoadVrm()
         {
             var path = GetFilePath();
             TexturePacker.Bridge.LoadVrm(path);
             TexturePacker.Bridge.Pack();
         }
         
-        void ExportVrm()
+        internal static void ExportVrm()
         {
             var path = GetFolderPath();
             if (string.IsNullOrEmpty(path))
@@ -88,7 +54,6 @@ namespace MsaI.Runtime.UI
             var paths = StandaloneFileBrowser.OpenFolderPanel("Save File", "", false);
             return paths[0];
         }
-#endif
     }
 }
 
