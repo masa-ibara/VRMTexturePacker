@@ -29,7 +29,7 @@ namespace MsaI.Runtime.UI
         static extern void UploadFile(string gameObjectName, string methodName, string filter, bool multiple);
 
         void LoadVrm() {
-            UploadFile(gameObject.name, "OnFileUpload", ".vrm", false);
+            UploadFile("BtnLoadFile", "OnFileUpload", ".vrm", false);
         }
 
         // Called from browser
@@ -41,10 +41,10 @@ namespace MsaI.Runtime.UI
         [DllImport("__Internal")]
         static extern void DownloadFile(string gameObjectName, string methodName, string filename, byte[] byteArray, int byteArraySize);
 
-        // Broser plugin should be called in OnPointerDown.
+        // Browser plugin should be called in OnPointerDown.
         void ExportVrm() {
             var result = TexturePacker.Bridge.Export();
-            DownloadFile(gameObject.name, "OnFileDownload", result.Item2, result.Item1, result.Item1.Length);
+            DownloadFile("BtnSaveFile", "OnFileDownload", result.Item2, result.Item1, result.Item1.Length);
         }
 
         // Called from browser
