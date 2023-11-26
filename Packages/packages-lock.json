@@ -157,13 +157,13 @@
       "hash": "7e052b19b3c0b4cd02e63159fc37db820729554e"
     },
     "com.vrmc.vrmshaders": {
-      "version": "https://github.com/vrm-c/UniVRM.git?path=/Assets/VRMShaders#v0.115.0",
+      "version": "https://github.com/vrm-c/UniVRM.git?path=/Assets/VRMShaders#v0.110.0",
       "depth": 0,
       "source": "git",
       "dependencies": {
         "com.unity.modules.imageconversion": "1.0.0"
       },
-      "hash": "7e052b19b3c0b4cd02e63159fc37db820729554e"
+      "hash": "3f7d81cfe9926f3b4bc5be335597a6ac3e3a0be6"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",

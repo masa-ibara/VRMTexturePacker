@@ -1,6 +1,7 @@
-using System;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -49,7 +50,6 @@ public class CanvasSampleOpenFileTextMultiple : MonoBehaviour, IPointerDownHandl
     }
 #endif
 
-    [Obsolete("Obsolete")]
     private IEnumerator OutputRoutine(string[] urlArr) {
         var outputText = "";
         for (int i = 0; i < urlArr.Length; i++) {
