@@ -2,7 +2,7 @@
 using System.Linq;
 using UnityEngine;
 
-namespace MsaI.TexturePacker
+namespace MsaI.Runtime.TexturePacker
 {
     public class Packer
     {

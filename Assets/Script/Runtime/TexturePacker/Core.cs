@@ -3,7 +3,7 @@ using UniGLTF;
 using UnityEngine;
 using VRM;
 
-namespace MsaI.TexturePacker
+namespace MsaI.Runtime.TexturePacker
 {
     public static class Core
     {

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace MsaI.TexturePacker
+namespace MsaI.Runtime.UI
 {
     public class UI : MonoBehaviour
     {
@@ -14,9 +14,9 @@ namespace MsaI.TexturePacker
             var selectFrontButton = root.Q<Button>("SelectVRM");
             selectFrontButton.clicked += () =>
             {
-                var path = Core.GetFilePath();
-                Core.LoadVrm(path[0]);
-                Core.Pack();
+                var path = TexturePacker.Core.GetFilePath();
+                TexturePacker.Core.LoadVrm(path[0]);
+                TexturePacker.Core.Pack();
             };
         }
     }

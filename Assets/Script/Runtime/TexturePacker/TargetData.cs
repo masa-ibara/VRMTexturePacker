@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
-namespace MsaI.TexturePacker
+
+namespace MsaI.Runtime.TexturePacker
 {
     public class TargetData
     {
