@@ -30,16 +30,12 @@ namespace MsaI.Runtime.TexturePacker
             Packer.PackAssets(gltfInstance.Root);
         }
         
-        internal static void Export(string path)
+        internal static (byte[], string) Export()
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                return;
-            }
-            var dest = Path.Combine(path, gltfInstance.name + "_atlas.vrm");
+            var fileName = gltfInstance.name + "_atlased.vrm";
             var vrm = VRMExporter.Export(new UniGLTF.GltfExportSettings(), gltfInstance.gameObject, new RuntimeTextureSerializer());
             var bytes = vrm.ToGlbBytes();
-            File.WriteAllBytes(dest, bytes);
+            return (bytes, fileName);
         }
     }
 }
