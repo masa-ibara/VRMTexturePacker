@@ -1,11 +1,12 @@
-using SFB;
+using System.IO;
 using UniGLTF;
 using UnityEngine;
 using VRM;
+using VRMShaders;
 
 namespace MsaI.Runtime.TexturePacker
 {
-    public static class Core
+    public static class Bridge
     {
         static RuntimeGltfInstance gltfInstance;
         async internal static void LoadVrm(string path)
@@ -21,20 +22,24 @@ namespace MsaI.Runtime.TexturePacker
             }
             var instance = await VrmUtility.LoadAsync(path);
             gltfInstance = instance;
-        }
-        
-        internal static string[] GetFilePath()
-        {
-            var extensions = new [] {
-                new ExtensionFilter("VRM Files", "vrm"),
-            };
-            var paths = StandaloneFileBrowser.OpenFilePanel("Open File", "", extensions, true);
-            return paths;
+            gltfInstance.name = Path.GetFileNameWithoutExtension(path);
         }
 
         internal static void Pack()
         {
             Packer.PackAssets(gltfInstance.Root);
+        }
+        
+        internal static void Export(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+            var dest = Path.Combine(path, gltfInstance.name + "_atlas.vrm");
+            var vrm = VRMExporter.Export(new UniGLTF.GltfExportSettings(), gltfInstance.gameObject, new RuntimeTextureSerializer());
+            var bytes = vrm.ToGlbBytes();
+            File.WriteAllBytes(dest, bytes);
         }
     }
 }

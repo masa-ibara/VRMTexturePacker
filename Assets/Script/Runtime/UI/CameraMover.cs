@@ -10,7 +10,7 @@ namespace MsaI.Runtime.UI
             var currentMousePosition = Input.mousePosition;
             if (Input.GetMouseButton(0))
             {
-                var position = (currentMousePosition - beforeMousePostion) / 100;
+                var position = (currentMousePosition - beforeMousePostion) / 200;
                 position = new Vector3(position.x, position.y * -1, 0);
                 transform.position += position;
             }
