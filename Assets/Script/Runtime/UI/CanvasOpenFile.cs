@@ -11,6 +11,8 @@ namespace MsaI.Runtime.UI
     [RequireComponent(typeof(Button))]
     public class CanvasOpenFile : MonoBehaviour, IPointerDownHandler
     {
+        TextSetter textSetter => FindObjectOfType<TextSetter>();
+        
     #if UNITY_WEBGL && !UNITY_EDITOR
         //
         // WebGL
@@ -40,16 +42,32 @@ namespace MsaI.Runtime.UI
 
         void OnClick()
         {
-            Core.LoadVrm();
+            textSetter.SetText("Loading...");
+            var path = Core.GetFilePath();
+            var loadVrm = TexturePacker.Bridge.LoadVrm(path);
+            if (loadVrm.Result)
+            {
+                TexturePacker.Bridge.Pack();
+                textSetter.SetText("");
+            }else{
+                textSetter.SetText("Failed to load VRM");
+            }
         }
     #endif
 
         IEnumerator OutputRoutine(string url)
         {
+            textSetter.SetText("Loading...");
             var loader = new WWW(url);
             yield return loader;
-            TexturePacker.Bridge.LoadBytesVrm(url, loader.bytes);
-            TexturePacker.Bridge.Pack();
+            var loadBytesVrm = TexturePacker.Bridge.LoadBytesVrm(url, loader.bytes);
+            if (loadBytesVrm.Result)
+            {
+                TexturePacker.Bridge.Pack();
+                textSetter.SetText("");
+            }else{
+                textSetter.SetText("Failed to load VRM");
+            }
         }
     }
 }

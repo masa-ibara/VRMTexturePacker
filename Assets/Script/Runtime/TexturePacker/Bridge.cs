@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading.Tasks;
 using UniGLTF;
 using UnityEngine;
 using VRM;
@@ -9,31 +10,45 @@ namespace MsaI.Runtime.TexturePacker
     public static class Bridge
     {
         static RuntimeGltfInstance gltfInstance;
-        async internal static void LoadVrm(string path)
+        async internal static Task<bool> LoadVrm(string path)
         {
             if (string.IsNullOrEmpty(path))
             {
                 Debug.LogWarning("Path is empty");
-                return;
+                return false;
             }
             if (gltfInstance != null)
             {
                 gltfInstance.Dispose();
             }
             var instance = await VrmUtility.LoadAsync(path);
-            gltfInstance = instance;
-            gltfInstance.name = Path.GetFileNameWithoutExtension(path);
+            if (instance != null)
+            {
+                SetupGltfInstance(instance, Path.GetFileNameWithoutExtension(path));
+                return true;
+            }
+            return false;
         }
-        
-        async internal static void LoadBytesVrm(string path, byte[] bytes)
+
+        async internal static Task<bool> LoadBytesVrm(string path, byte[] bytes)
         {
             if (gltfInstance != null)
             {
                 gltfInstance.Dispose();
             }
             var instance = await VrmUtility.LoadBytesAsync(path, bytes);
+            if (instance != null)
+            {
+                SetupGltfInstance(instance, Path.GetFileNameWithoutExtension(path));
+                return true;
+            }
+            return false;
+        }
+        
+        static void SetupGltfInstance(RuntimeGltfInstance instance, string name)
+        {
             gltfInstance = instance;
-            gltfInstance.name = Path.GetFileNameWithoutExtension(path);
+            gltfInstance.name = name;
         }
 
         internal static void Pack()

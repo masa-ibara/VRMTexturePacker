@@ -20,11 +20,14 @@ namespace MsaI.Runtime.UI
             exportVrm.clicked += ExportVrm;
         }
 
-        internal static void LoadVrm()
+        static void LoadVrm()
         {
-            var path = GetFilePath();
-            TexturePacker.Bridge.LoadVrm(path);
-            TexturePacker.Bridge.Pack();
+            var path = Core.GetFilePath();
+            var loadVrm = TexturePacker.Bridge.LoadVrm(path);
+            if (loadVrm.Result)
+            {
+                TexturePacker.Bridge.Pack();
+            }
         }
         
         internal static void ExportVrm()
@@ -38,8 +41,8 @@ namespace MsaI.Runtime.UI
             var dest = Path.Combine(path, result.Item2);
             File.WriteAllBytes(dest, result.Item1);
         }
-        
-        static string GetFilePath()
+
+        internal static string GetFilePath()
         {
             var extensions = new [] {
                 new ExtensionFilter("VRM Files", "vrm"),
