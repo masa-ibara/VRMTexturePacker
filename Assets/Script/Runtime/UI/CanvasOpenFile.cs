@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using SFB;
+using UnityEngine.Networking;
 
 namespace MsaI.Runtime.UI
 {
@@ -58,9 +59,11 @@ namespace MsaI.Runtime.UI
         IEnumerator OutputRoutine(string url)
         {
             textSetter.SetText("Loading...");
-            var loader = new WWW(url);
-            yield return loader;
-            var loadBytesVrm = TexturePacker.Bridge.LoadBytesVrm(url, loader.bytes);
+            var request = new UnityWebRequest(url);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            yield return request.SendWebRequest();
+            var loader = request.downloadHandler;
+            var loadBytesVrm = TexturePacker.Bridge.LoadBytesVrm(url, loader.data);
             if (loadBytesVrm.Result)
             {
                 TexturePacker.Bridge.Pack();
