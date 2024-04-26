@@ -6,14 +6,12 @@ namespace MsaI.Runtime.TexturePacker
     public class TargetData
     {
         internal SkinnedMeshRenderer skinnedMeshRenderer;
-        internal SubMeshDescriptor subMeshDescriptor;
-        internal int materialIndex;
+        internal int subMeshIndex;
 
-        internal TargetData(SkinnedMeshRenderer skinnedMeshRenderer, SubMeshDescriptor subMeshDescriptor, int materialIndex)
+        internal TargetData(SkinnedMeshRenderer skinnedMeshRenderer, int subMeshIndex)
         {
             this.skinnedMeshRenderer = skinnedMeshRenderer;
-            this.subMeshDescriptor = subMeshDescriptor;
-            this.materialIndex = materialIndex;
+            this.subMeshIndex = subMeshIndex;
         }
     }
 }

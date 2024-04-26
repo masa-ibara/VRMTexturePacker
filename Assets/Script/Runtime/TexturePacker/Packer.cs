@@ -43,11 +43,9 @@ namespace MsaI.Runtime.TexturePacker
         {
             skinnedMeshRenderer.enabled = true;
             var materials = skinnedMeshRenderer.sharedMaterials;
-            var mesh = skinnedMeshRenderer.sharedMesh;
             for (int i = 0; i < materials.Length; i++)
             {
-                var subMesh = mesh.GetSubMesh(i);
-                var newTargetData = new TargetData(skinnedMeshRenderer, subMesh, i);
+                var newTargetData = new TargetData(skinnedMeshRenderer, i);
                 //create dictionary for distinct texture, shader, color
                 var key = (materials[i].mainTexture, materials[i].shader, materials[i].color);
                 if (targetsDict.TryGetValue(key, out var targetDatas))
@@ -85,19 +83,19 @@ namespace MsaI.Runtime.TexturePacker
             {
                 var skinnedMeshRenderer = targetDatas[i].skinnedMeshRenderer;
                 var currentMaterials = skinnedMeshRenderer.sharedMaterials;
-                currentMaterials[targetDatas[i].materialIndex] = material;
+                currentMaterials[targetDatas[i].subMeshIndex] = material;
                 skinnedMeshRenderer.sharedMaterials = currentMaterials;
             }
         }
         
         static void ApplyPackings(Shader shader, ShaderUtil.RenderMode renderMode, TargetData[] targetDatas)
         {
-            var materials = targetDatas.Select(x => x.skinnedMeshRenderer.sharedMaterials[x.materialIndex]).ToArray();
+            var materials = targetDatas.Select(x => x.skinnedMeshRenderer.sharedMaterials[x.subMeshIndex]).ToArray();
             var textures = materials.Select(x => x.mainTexture as Texture2D).Distinct().ToArray();
             var meshesDict = new Dictionary<Texture2D, TargetData[]>();
             foreach (var targetData in targetDatas)
             {
-                var texture = targetData.skinnedMeshRenderer.sharedMaterials[targetData.materialIndex].mainTexture as Texture2D;
+                var texture = targetData.skinnedMeshRenderer.sharedMaterials[targetData.subMeshIndex].mainTexture as Texture2D;
                 if (meshesDict.TryGetValue(texture, out var array))
                 {
                     meshesDict[texture] = new List<TargetData>(array){targetData}.ToArray();
@@ -137,7 +135,7 @@ namespace MsaI.Runtime.TexturePacker
         
         static void PackAndApplyTextures(Texture2D[] readableTextures, Shader shader, ShaderUtil.RenderMode renderMode, Dictionary<Texture2D, TargetData[]> meshesDict)
         {
-            var atlas = new Texture2D(1024, 1024);
+            var atlas = new Texture2D(128, 128, TextureFormat.RGBA32, false);
             var maximumAtlasSize = 512;
             if (readableTextures.Length > 9)
             {
@@ -152,6 +150,8 @@ namespace MsaI.Runtime.TexturePacker
             var material = new Material(shader);
             material = ShaderUtil.SetBlendMode(material, renderMode);
             material.mainTexture = atlas;
+            // 重複処理を避けるためのDictionary
+            var processedMeshDict = new Dictionary<(Mesh mesh, int subMeshIndex), Mesh>();
             for (int i = 0; i < rects.Length; i++)
             {
                 var rect = rects[i];
@@ -159,23 +159,27 @@ namespace MsaI.Runtime.TexturePacker
                 for (int j = 0; j < targetDatas.Length; j++)
                 {
                     var mesh = targetDatas[j].skinnedMeshRenderer.sharedMesh;
-                    var subMeshDescriptor = targetDatas[j].subMeshDescriptor;
-                    var uvs = mesh.uv;
-                    for (var k = 0; k < uvs.Length; k++)
+                    var subMeshIndex = targetDatas[j].subMeshIndex;
+                    var subMeshDescriptor = mesh.GetSubMesh(subMeshIndex);
+                    if (processedMeshDict.TryGetValue((mesh, subMeshIndex), out var processedMesh) && processedMesh != null)
                     {
-                        if (subMeshDescriptor.firstVertex <= k && k < subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount)
-                        {
-                            var uv = uvs[k];
-                            var uvx = uv.x % 1;
-                            var uvy = uv.y % 1;
-                            uvs[k] = new Vector2(rect.x + uvx * rect.width, rect.y + uvy * rect.height);
-                        }
+                        continue;
+                    }
+                    var uvs = mesh.uv;
+                    for (int k = subMeshDescriptor.firstVertex; k < subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount; k++)
+                    {
+                        var uv = uvs[k];
+                        var uvx = uv.x % 1;
+                        var uvy = uv.y % 1;
+                        uvs[k] = new Vector2(rect.x + uvx * rect.width, rect.y + uvy * rect.height);
                     }
                     mesh.uv = uvs;
+                    processedMeshDict[(mesh, subMeshIndex)] = mesh;
                     targetDatas[j].skinnedMeshRenderer.sharedMesh = mesh;
+                    // Set material
                     var currentMaterials = targetDatas[j].skinnedMeshRenderer.sharedMaterials;
-                    currentMaterials[targetDatas[j].materialIndex] = material;
-                    targetDatas[j].skinnedMeshRenderer.sharedMaterials = currentMaterials;
+                    currentMaterials[subMeshIndex] = material;
+                    targetDatas[j].skinnedMeshRenderer.materials = currentMaterials;
                 }
             }
         }

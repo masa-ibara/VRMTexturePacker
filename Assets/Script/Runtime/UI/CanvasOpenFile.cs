@@ -81,7 +81,13 @@ namespace MsaI.Runtime.UI
         void PostProcess()
         {
             TexturePacker.Bridge.Pack();
+            // Clear text and result textures
             textSetter.SetText("");
+            foreach (var resultTextureSetter in resultTextureSetters)
+            {
+                resultTextureSetter.ClearResult();
+            }
+            // Set result textures
             var materials = TexturePacker.Bridge.ReadMaterials();
             for (int i = 0; i < Mathf.Min(resultTextureSetters.Length, 2, materials.Length); i++)
             {
