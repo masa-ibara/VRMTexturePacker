@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace MsaI.Runtime.UI
 {
-    public class ResultTextureSetter : MonoBehaviour
+    public class ResultSetter : MonoBehaviour
     {
         [SerializeField] RawImage outputImage;
         [SerializeField] Text outputText;

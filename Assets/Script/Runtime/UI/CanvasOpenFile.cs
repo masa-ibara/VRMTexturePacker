@@ -13,7 +13,7 @@ namespace MsaI.Runtime.UI
     public class CanvasOpenFile : MonoBehaviour, IPointerDownHandler
     {
         TextSetter textSetter => FindObjectOfType<TextSetter>();
-        ResultTextureSetter[] resultTextureSetters => FindObjectsByType<ResultTextureSetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        ResultSetter[] resultTextureSetters => FindObjectsByType<ResultSetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         
     #if UNITY_WEBGL && !UNITY_EDITOR
         //
