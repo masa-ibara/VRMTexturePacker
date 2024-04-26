@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace MsaI.Runtime.UI
 {
@@ -17,17 +18,23 @@ namespace MsaI.Runtime.UI
             }
             if (Input.GetMouseButton(0))
             {
-                var position = (currentMousePosition - beforeMousePostion) * (mainCamera.localPosition.z + 0.01f) / 200;
+                var scaleVariable = mainCamera.localPosition.z + 0.01f;
+                var position = (currentMousePosition - beforeMousePostion) * scaleVariable / 200;
                 position = mainCamera.right * -position.x + mainCamera.up * -position.y;
                 transform.position += position;
             }
             if (Input.GetMouseButton(1))
             {
-                var eular = (currentMousePosition - beforeMousePostion) / 10;
-                eular = new Vector3(eular.y, eular.x, 0);
-                transform.Rotate(eular);
+                var euler = (currentMousePosition - beforeMousePostion) / 10;
+                euler = new Vector3(euler.y, euler.x, 0);
+                transform.Rotate(euler);
             }
             beforeMousePostion = currentMousePosition;
+        }
+
+        void ResetCamera()
+        {
+            throw new NotImplementedException();
         }
     }
 }

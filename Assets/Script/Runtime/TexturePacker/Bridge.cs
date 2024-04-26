@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using UniGLTF;
 using UnityEngine;
@@ -62,6 +64,35 @@ namespace MsaI.Runtime.TexturePacker
             var vrm = VRMExporter.Export(new UniGLTF.GltfExportSettings(), gltfInstance.gameObject, new RuntimeTextureSerializer());
             var bytes = vrm.ToGlbBytes();
             return (bytes, fileName);
+        }
+        
+        internal static Texture[] ReadTextures()
+        {
+            var textures = new List<Texture>();
+            foreach (var renderer in gltfInstance.Root.GetComponentsInChildren<Renderer>())
+            {
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    if (material.mainTexture != null)
+                    {
+                        textures.Add(material.mainTexture);
+                    }
+                }
+            }
+            return textures.Distinct().ToArray();
+        }
+        
+        internal static Material[] ReadMaterials()
+        {
+            var materials = new List<Material>();
+            foreach (var renderer in gltfInstance.Root.GetComponentsInChildren<Renderer>())
+            {
+                foreach (var material in renderer.sharedMaterials)
+                {
+                    materials.Add(material);
+                }
+            }
+            return materials.Distinct().ToArray();
         }
     }
 }

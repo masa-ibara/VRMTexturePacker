@@ -13,6 +13,7 @@ namespace MsaI.Runtime.UI
     public class CanvasOpenFile : MonoBehaviour, IPointerDownHandler
     {
         TextSetter textSetter => FindObjectOfType<TextSetter>();
+        ResultTextureSetter[] resultTextureSetters => FindObjectsByType<ResultTextureSetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         
     #if UNITY_WEBGL && !UNITY_EDITOR
         //
@@ -21,12 +22,14 @@ namespace MsaI.Runtime.UI
         [DllImport("__Internal")]
         private static extern void UploadFile(string gameObjectName, string methodName, string filter, bool multiple);
 
-        public void OnPointerDown(PointerEventData eventData) {
+        public void OnPointerDown(PointerEventData eventData) 
+        {
             UploadFile(gameObject.name, "OnFileUpload", ".vrm", false);
         }
 
         // Called from browser
-        public void OnFileUpload(string url) {
+        public void OnFileUpload(string url) 
+        {
             StartCoroutine(OutputRoutine(url));
         }
     #else
@@ -48,9 +51,10 @@ namespace MsaI.Runtime.UI
             var loadVrm = TexturePacker.Bridge.LoadVrm(path);
             if (loadVrm.Result)
             {
-                TexturePacker.Bridge.Pack();
-                textSetter.SetText("");
-            }else{
+                PostProcess();
+            }
+            else
+            {
                 textSetter.SetText("Failed to load VRM");
             }
         }
@@ -66,10 +70,22 @@ namespace MsaI.Runtime.UI
             var loadBytesVrm = TexturePacker.Bridge.LoadBytesVrm(url, loader.data);
             if (loadBytesVrm.Result)
             {
-                TexturePacker.Bridge.Pack();
-                textSetter.SetText("");
-            }else{
+                PostProcess();
+            }
+            else
+            {
                 textSetter.SetText("Failed to load VRM");
+            }
+        }
+        
+        void PostProcess()
+        {
+            TexturePacker.Bridge.Pack();
+            textSetter.SetText("");
+            var materials = TexturePacker.Bridge.ReadMaterials();
+            for (int i = 0; i < Mathf.Min(resultTextureSetters.Length, 2, materials.Length); i++)
+            {
+                resultTextureSetters[i].SetResult(materials[i].mainTexture, materials[i].name);
             }
         }
     }
