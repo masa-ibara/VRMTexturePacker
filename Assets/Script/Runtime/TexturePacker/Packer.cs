@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -9,7 +10,7 @@ namespace MsaI.Runtime.TexturePacker
         static Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]> targetsDict;
         static Dictionary<(Shader shader, ShaderUtil.RenderMode renderMode), TargetData[]> atlasTargetsDict;
 
-        internal static void PackAssets(GameObject rootGameObject)
+        internal static void PackAssets(GameObject rootGameObject, bool highCompression = false)
         {
             //init
             targetsDict = new Dictionary<(Texture texture, Shader shader, Color mainColor), TargetData[]>();
@@ -20,13 +21,13 @@ namespace MsaI.Runtime.TexturePacker
             {
                 var key = target.Key;
                 var targetDatas = target.Value;
-                BakeTextures(key.texture, key.shader, key.mainColor, targetDatas);
+                BakeTextures(key.texture, key.mainColor, targetDatas);
             }
             foreach (var target in atlasTargetsDict)
             {
                 var key = target.Key;
                 var targetDatas = target.Value;
-                ApplyPackings(key.shader, key.renderMode, targetDatas);
+                ApplyPackings(key.shader, key.renderMode, targetDatas, highCompression);
             }
         }
 
@@ -41,16 +42,20 @@ namespace MsaI.Runtime.TexturePacker
 
         static void AddToTargetDict(SkinnedMeshRenderer skinnedMeshRenderer)
         {
+            // ToDo: CutOutかつColorのAlphaが0のMeshを削除し、そのMaterialを排除する
             skinnedMeshRenderer.enabled = true;
             var materials = skinnedMeshRenderer.sharedMaterials;
             for (int i = 0; i < materials.Length; i++)
             {
+                var mat = materials[i];
+                var renderMode = ShaderUtil.GetRenderMode(mat);
                 var newTargetData = new TargetData(skinnedMeshRenderer, i);
                 //create dictionary for distinct texture, shader, color
-                var key = (materials[i].mainTexture, materials[i].shader, materials[i].color);
+                var key = (mat.mainTexture, mat.shader, mat.color);
                 if (targetsDict.TryGetValue(key, out var targetDatas))
                 {
-                    targetDatas = new List<TargetData>(targetDatas){newTargetData}.ToArray();
+                    Array.Resize(ref targetDatas, targetDatas.Length + 1);
+                    targetDatas[^1] = newTargetData;
                     targetsDict[key] = targetDatas;
                 }
                 else
@@ -58,10 +63,11 @@ namespace MsaI.Runtime.TexturePacker
                     targetsDict.Add(key, new []{newTargetData});
                 }
                 //create dictionary for atlas
-                var atlasKey = (materials[i].shader, ShaderUtil.GetRenderMode(materials[i]));
+                var atlasKey = (mat.shader, renderMode);
                 if (atlasTargetsDict.TryGetValue(atlasKey, out var atlasTargetDatas))
                 {
-                    atlasTargetDatas = new List<TargetData>(atlasTargetDatas){newTargetData}.ToArray();
+                    Array.Resize(ref atlasTargetDatas, atlasTargetDatas.Length + 1);
+                    atlasTargetDatas[^1] = newTargetData;
                     atlasTargetsDict[atlasKey] = atlasTargetDatas;
                 }
                 else
@@ -71,24 +77,21 @@ namespace MsaI.Runtime.TexturePacker
             }
         }
 
-        static void BakeTextures(Texture texture, Shader shader, Color mainColor, TargetData[] targetDatas)
+        static void BakeTextures(Texture texture, Color mainColor, TargetData[] targetDatas)
         {
             // Create texture with multiplied color
             var texture2D = texture as Texture2D;
             var editedTexture = CreateMultipliedColorTexture(texture2D, mainColor);
-            var material = new Material(shader);
-            material.mainTexture = editedTexture;
-
             for (int i = 0; i < targetDatas.Length; i++)
             {
                 var skinnedMeshRenderer = targetDatas[i].skinnedMeshRenderer;
                 var currentMaterials = skinnedMeshRenderer.sharedMaterials;
-                currentMaterials[targetDatas[i].subMeshIndex] = material;
-                skinnedMeshRenderer.sharedMaterials = currentMaterials;
+                currentMaterials[targetDatas[i].subMeshIndex].mainTexture = editedTexture;
+                skinnedMeshRenderer.materials = currentMaterials;
             }
         }
         
-        static void ApplyPackings(Shader shader, ShaderUtil.RenderMode renderMode, TargetData[] targetDatas)
+        static void ApplyPackings(Shader shader, ShaderUtil.RenderMode renderMode, TargetData[] targetDatas, bool highCompression = false)
         {
             var materials = targetDatas.Select(x => x.skinnedMeshRenderer.sharedMaterials[x.subMeshIndex]).ToArray();
             var textures = materials.Select(x => x.mainTexture as Texture2D).Distinct().ToArray();
@@ -96,16 +99,24 @@ namespace MsaI.Runtime.TexturePacker
             foreach (var targetData in targetDatas)
             {
                 var texture = targetData.skinnedMeshRenderer.sharedMaterials[targetData.subMeshIndex].mainTexture as Texture2D;
+                if (texture == null)
+                {
+                    // Textureが無い場合でも単色で埋めているはずなのでここには到達しないはず
+                    continue;
+                }
                 if (meshesDict.TryGetValue(texture, out var array))
                 {
-                    meshesDict[texture] = new List<TargetData>(array){targetData}.ToArray();
+                    Array.Resize(ref array, array.Length + 1);
+                    array[^1] = targetData;
+                    meshesDict[texture] = array;
                 }
                 else
                 {
                     meshesDict.Add(texture, new []{targetData});
                 }
             }
-            PackAndApplyTextures(textures, shader, renderMode, meshesDict);
+            Debug.Log($"Packing {textures.Length} textures");
+            PackAndApplyTextures(textures, shader, renderMode, meshesDict, highCompression);
         }
         
         static Texture2D CreateMultipliedColorTexture(Texture2D texture2D, Color color)
@@ -133,22 +144,47 @@ namespace MsaI.Runtime.TexturePacker
             return editedTexture;
         }
         
-        static void PackAndApplyTextures(Texture2D[] readableTextures, Shader shader, ShaderUtil.RenderMode renderMode, Dictionary<Texture2D, TargetData[]> meshesDict)
+        static int CalculateAtlasSize(Texture2D[] textures)
         {
-            var atlas = new Texture2D(128, 128, TextureFormat.RGBA32, false);
-            var maximumAtlasSize = 512;
-            if (readableTextures.Length > 9)
+            var score = 0;
+            foreach (var texture in textures)
+            {
+                var max = Math.Max(texture.width, texture.height);
+                score += max / 256;
+            }
+            int maximumAtlasSize;
+            // 半分の解像度をターゲットにする 8*8(2048px)=64Scoreを1024pxに収める
+            if (score > 64)
             {
                 maximumAtlasSize = 2048;
             }
-            else if (readableTextures.Length > 4)
+            else if (score > 16)
             {
                 maximumAtlasSize = 1024;
             }
-            var rects = atlas.PackTextures(readableTextures, 0, maximumAtlasSize);
+            else if (score > 4)
+            {
+                maximumAtlasSize = 512;
+            }
+            else
+            {
+                maximumAtlasSize = 256;
+            }
+            return maximumAtlasSize;
+        }
+        
+        static void PackAndApplyTextures(Texture2D[] readableTextures, Shader shader, ShaderUtil.RenderMode renderMode, Dictionary<Texture2D, TargetData[]> meshesDict, bool highCompression = false)
+        {
+            var atlas = new Texture2D(128, 128, TextureFormat.RGBA32, false);
+            var maxAtlasSize = 2048;
+            if (highCompression)
+            {
+                maxAtlasSize = CalculateAtlasSize(readableTextures);
+            }
+            var rects = atlas.PackTextures(readableTextures, 0, maxAtlasSize, false);
             atlas.Apply();
             var material = new Material(shader);
-            material = ShaderUtil.SetBlendMode(material, renderMode);
+            ShaderUtil.SetBlendMode(ref material, renderMode);
             material.mainTexture = atlas;
             // 重複処理を避けるためのDictionary
             var processedMeshDict = new Dictionary<(Mesh mesh, int subMeshIndex), Mesh>();
@@ -166,7 +202,8 @@ namespace MsaI.Runtime.TexturePacker
                         continue;
                     }
                     var uvs = mesh.uv;
-                    for (int k = subMeshDescriptor.firstVertex; k < subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount; k++)
+                    var limit = Math.Min(subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount, uvs.Length);
+                    for (int k = subMeshDescriptor.firstVertex; k < limit; k++)
                     {
                         var uv = uvs[k];
                         var uvx = uv.x % 1;

@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 namespace MsaI.Runtime.UI
 {
-    public class TextSetter : MonoBehaviour
+    public class Console : MonoBehaviour
     {
         [SerializeField] Text output;
         double time;

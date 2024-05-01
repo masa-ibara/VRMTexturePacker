@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 
 namespace MsaI.Runtime.UI
 {
+    // Not use in WebGL
     public class Core : MonoBehaviour
     {
         [SerializeField] UIDocument uiDocument;

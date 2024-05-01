@@ -10,7 +10,7 @@ namespace MsaI.Runtime.UI
     [RequireComponent(typeof(Button))]
     public class CanvasSaveFile : MonoBehaviour, IPointerDownHandler
     {
-        TextSetter textSetter => FindObjectOfType<TextSetter>();
+        Console Console => FindObjectOfType<Console>();
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     //
@@ -27,7 +27,7 @@ namespace MsaI.Runtime.UI
 
     // Called from browser
     public void OnFileDownload() {
-        textSetter.SetText("File Successfully Downloaded");
+        Console.SetText("File Successfully Downloaded");
     }
 #else
         //
@@ -45,7 +45,7 @@ namespace MsaI.Runtime.UI
         void OnClick()
         {
             Core.ExportVrm();
-            textSetter.SetText("File Successfully Downloaded");
+            Console.SetText("File Successfully Downloaded");
         }
 #endif
     }

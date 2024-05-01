@@ -53,9 +53,9 @@ namespace MsaI.Runtime.TexturePacker
             gltfInstance.name = name;
         }
 
-        internal static void Pack()
+        internal static void Pack(bool highCompression = false)
         {
-            Packer.PackAssets(gltfInstance.Root);
+            Packer.PackAssets(gltfInstance.Root, highCompression);
         }
         
         internal static (byte[], string) Export()

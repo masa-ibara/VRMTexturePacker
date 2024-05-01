@@ -12,8 +12,9 @@ namespace MsaI.Runtime.UI
     [RequireComponent(typeof(Button))]
     public class CanvasOpenFile : MonoBehaviour, IPointerDownHandler
     {
-        TextSetter textSetter => FindObjectOfType<TextSetter>();
-        ResultSetter[] resultTextureSetters => FindObjectsByType<ResultSetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Console Console => FindObjectOfType<Console>();
+        ResultSetter[] ResultSetters => FindObjectsByType<ResultSetter>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        Toggle Toggle => FindObjectOfType<Toggle>();
         
     #if UNITY_WEBGL && !UNITY_EDITOR
         //
@@ -46,7 +47,7 @@ namespace MsaI.Runtime.UI
 
         void OnClick()
         {
-            textSetter.SetText("Loading...");
+            Console.SetText("Loading...");
             var path = Core.GetFilePath();
             var loadVrm = TexturePacker.Bridge.LoadVrm(path);
             if (loadVrm.Result)
@@ -55,14 +56,14 @@ namespace MsaI.Runtime.UI
             }
             else
             {
-                textSetter.SetText("Failed to load VRM");
+                Console.SetText("Failed to load VRM");
             }
         }
     #endif
 
         IEnumerator OutputRoutine(string url)
         {
-            textSetter.SetText("Loading...");
+            Console.SetText("Loading...");
             var request = new UnityWebRequest(url);
             request.downloadHandler = new DownloadHandlerBuffer();
             yield return request.SendWebRequest();
@@ -74,24 +75,25 @@ namespace MsaI.Runtime.UI
             }
             else
             {
-                textSetter.SetText("Failed to load VRM");
+                Console.SetText("Failed to load VRM");
             }
         }
         
         void PostProcess()
         {
-            TexturePacker.Bridge.Pack();
+            TexturePacker.Bridge.Pack(Toggle.isOn);
             // Clear text and result textures
-            textSetter.SetText("");
-            foreach (var resultTextureSetter in resultTextureSetters)
+            Console.SetText("");
+            foreach (var resultTextureSetter in ResultSetters)
             {
                 resultTextureSetter.ClearResult();
             }
             // Set result textures
             var materials = TexturePacker.Bridge.ReadMaterials();
-            for (int i = 0; i < Mathf.Min(resultTextureSetters.Length, 2, materials.Length); i++)
+            for (int i = 0; i < Mathf.Min(ResultSetters.Length, 2, materials.Length); i++)
             {
-                resultTextureSetters[i].SetResult(materials[i].mainTexture, materials[i].name);
+                var text = $"{materials[i].name}\r\n({materials[i].mainTexture.width}x{materials[i].mainTexture.height})";
+                ResultSetters[i].SetResult(materials[i].mainTexture, text);
             }
         }
     }

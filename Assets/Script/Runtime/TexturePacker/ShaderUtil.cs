@@ -30,7 +30,7 @@ namespace MsaI.Runtime.TexturePacker
             return RenderMode.Opaque;
         }
 
-        internal static Material SetBlendMode(Material material, RenderMode renderMode)
+        internal static void SetBlendMode(ref Material material, RenderMode renderMode)
         {
             switch (renderMode)
             {
@@ -62,7 +62,6 @@ namespace MsaI.Runtime.TexturePacker
                     material.renderQueue = (int)RenderQueue.Transparent;
                     break;
             }
-            return material;
         }
     }
 }
