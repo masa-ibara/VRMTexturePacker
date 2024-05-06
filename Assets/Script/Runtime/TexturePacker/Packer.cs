@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace MsaI.Runtime.TexturePacker
 {
@@ -115,7 +116,6 @@ namespace MsaI.Runtime.TexturePacker
                     meshesDict.Add(texture, new []{targetData});
                 }
             }
-            Debug.Log($"Packing {textures.Length} textures");
             PackAndApplyTextures(textures, shader, renderMode, meshesDict, highCompression);
         }
         
@@ -186,39 +186,74 @@ namespace MsaI.Runtime.TexturePacker
             var material = new Material(shader);
             ShaderUtil.SetBlendMode(ref material, renderMode);
             material.mainTexture = atlas;
-            // 重複処理を避けるためのDictionary
-            var processedMeshDict = new Dictionary<(Mesh mesh, int subMeshIndex), Mesh>();
             for (int i = 0; i < rects.Length; i++)
             {
                 var rect = rects[i];
                 var targetDatas = meshesDict[readableTextures[i]];
-                for (int j = 0; j < targetDatas.Length; j++)
+                foreach (var t in targetDatas)
                 {
-                    var mesh = targetDatas[j].skinnedMeshRenderer.sharedMesh;
-                    var subMeshIndex = targetDatas[j].subMeshIndex;
+                    var subMeshIndex = t.subMeshIndex;
+                    // Apply material
+                    var currentMaterials = t.skinnedMeshRenderer.sharedMaterials;
+                    currentMaterials[subMeshIndex] = material;
+                    t.skinnedMeshRenderer.materials = currentMaterials;
+                    // Shift UVs
+                    var mesh = t.skinnedMeshRenderer.sharedMesh;
                     var subMeshDescriptor = mesh.GetSubMesh(subMeshIndex);
-                    if (processedMeshDict.TryGetValue((mesh, subMeshIndex), out var processedMesh) && processedMesh != null)
-                    {
-                        continue;
-                    }
                     var uvs = mesh.uv;
+                    uvs = FixOffsetUvs(uvs);
                     var limit = Math.Min(subMeshDescriptor.firstVertex + subMeshDescriptor.vertexCount, uvs.Length);
                     for (int k = subMeshDescriptor.firstVertex; k < limit; k++)
                     {
                         var uv = uvs[k];
-                        var uvx = uv.x % 1;
-                        var uvy = uv.y % 1;
-                        uvs[k] = new Vector2(rect.x + uvx * rect.width, rect.y + uvy * rect.height);
+                        uvs[k] = new Vector2(rect.x + uv.x * rect.width, rect.y + uv.y * rect.height);
                     }
+                    // sharedMeshしか編集できないため、既存のMeshに対象のsubMeshIndex箇所のみ上書きする
+                    // 他のsubMeshIndexで既に編集されたMeshを再利用しないと他のsubMeshIndexで編集したUVの変更がリセットされてしまう
                     mesh.uv = uvs;
-                    processedMeshDict[(mesh, subMeshIndex)] = mesh;
-                    targetDatas[j].skinnedMeshRenderer.sharedMesh = mesh;
-                    // Set material
-                    var currentMaterials = targetDatas[j].skinnedMeshRenderer.sharedMaterials;
-                    currentMaterials[subMeshIndex] = material;
-                    targetDatas[j].skinnedMeshRenderer.materials = currentMaterials;
+                    t.skinnedMeshRenderer.sharedMesh = mesh;
                 }
             }
+        }
+        
+        static Vector2[] FixOffsetUvs(Vector2[] uvs)
+        {
+            for (int i = 0; i < uvs.Length; i++)
+            {
+                var uv = uvs[i];
+                // x
+                if (uv.x > 1)
+                {
+                    while (uv.x > 1)
+                    {
+                        uv.x -= 1;
+                    }
+                }
+                else if (uv.x < 0)
+                {
+                    while (uv.x < 0)
+                    {
+                        uv.x += 1;
+                    }
+                }
+                // y
+                if (uv.y > 1)
+                {
+                    while (uv.y > 1)
+                    {
+                        uv.y -= 1;
+                    }
+                }
+                else if (uv.y < 0)
+                {
+                    while (uv.y < 0)
+                    {
+                        uv.y += 1;
+                    }
+                }
+                uvs[i] = uv;
+            }
+            return uvs;
         }
     }
 }
